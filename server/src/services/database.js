@@ -43,6 +43,16 @@ async function createUser(formBody, hashedPassword) {
     
 }
 
+async function getAllPosts(){
+    try {
+        const posts = await prisma.post.findMany();
+        return posts;
+    } catch (error) {
+        console.error('Error fetching posts list', error);
+        throw error;
+    }
+}
+
 async function getPostById(postId) {
     try {
         const post = await prisma.post.findUnique({
@@ -101,6 +111,26 @@ async function deletePostById(postId) {
 
 }
 
+async function getAllComments() {
+    try {
+        const allComments = await prisma.comment.findMany();
+        return allComments;
+    } catch (error) {
+        console.error('Error fetching all comments list', error);
+        throw error;
+    }
+}
+
+async function getAllCommentsOfPost(postId) {
+    try {
+        const comments = await prisma.comment.findMany({where: {parentId: postId}});
+        return comments;
+    } catch (error) {
+        console.error('Error fetching comments', error);
+        throw error;
+    }
+}
+
 async function createComment(commenterId, text, parentId) {
     try {
         const comment = await prisma.comment.create({
@@ -118,5 +148,38 @@ async function createComment(commenterId, text, parentId) {
     }
 }
 
+async function updateComment(commentId, text) {
+    try {
+        const updatedComment = await prisma.comment.update({where: {id: commentId}, data: { text:text, createdAt: new Date(), }});
+        console.log('Comment updated successfully', updateComment)
+        return updatedComment;
+    } catch (error) {
+        console.error('Error updating comment', error);
+        throw error;
+    }
+}
 
-module.exports = { getUserByName, getUserById, createUser, getPostById, createPost, updatePost, deletePostById, createComment };
+async function deleteCommentById(commentId) {
+    try {
+        const comment = await prisma.comment.delete({where:{id: commentId}});
+        console.log('Comment deleted successfully', comment);
+        return comment;
+    } catch (error) {
+        console.error('Error deleting comment', error);
+        throw error;
+    }
+}
+
+module.exports = { getUserByName,
+                   getUserById, 
+                   createUser, 
+                   getAllPosts, 
+                   getPostById,
+                   createPost, 
+                   updatePost, 
+                   deletePostById, 
+                   getAllComments,
+                   getAllCommentsOfPost, 
+                   createComment, 
+                   updateComment,
+                   deleteCommentById };

@@ -1,15 +1,18 @@
 const express = require('express');
+const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const path = require('node:path');
 const bcrypt = require('bcryptjs');
 const database = require('./src/services/database');
 const LocalStrategy = require('passport-local').Strategy;
+const Joi = require('joi');
 require('dotenv').config();
 
 const app = express();
 
 app.use(passport.initialize());
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -56,6 +59,16 @@ app.use((req, res, next) => {
 
 // routes for crud operations on posts.
 
+app.get(('/api/posts/', verifyToken, async (req, res) => {
+  try {
+    const posts = await database.getAllPosts();
+    res.json({posts});
+  } catch (error) {
+    console.error('Error fetching posts list');
+    res.status(500).json({error:'Error fetching posts list'});
+  }
+}));
+
 app.get('/api/posts/:postid', verifyToken, async (req, res) => {
     const postId = parseInt(req.params.postid);
     try {
@@ -68,7 +81,7 @@ app.get('/api/posts/:postid', verifyToken, async (req, res) => {
     }
 });
 
-app.post('/api/posts', verifyToken, verifyAdmin, async (req, res) => {
+app.post('/api/posts', verifyToken, verifyAdmin, validatePost, async (req, res) => {
     try {
        const post = await database.createPost(req.body.title, req.body.text, req.token.id);
        
@@ -80,7 +93,7 @@ app.post('/api/posts', verifyToken, verifyAdmin, async (req, res) => {
   
 });
 
-app.patch('/api/posts/:postid', verifyToken, verifyAdmin, async (req, res) => {
+app.patch('/api/posts/:postid', verifyToken, verifyAdmin, validateUpdatePost, async (req, res) => {
     const postId = parseInt(req.params.postid);
     const updateData = parseEditPostBody(req.body);
   try {
@@ -105,7 +118,33 @@ app.delete('/api/posts/:postid', verifyToken, verifyAdmin, async (req, res) => {
 });
 
 
-app.post('/api/posts/:postid/comments', verifyToken, async (req, res) => {
+// routes for crud operations on comments
+
+
+app.get('/api/comments', verifyToken, async (req, res) => {
+    try {
+      const allComments = await database.getAllComments();
+      res.json({allComments});
+    } catch (error) {
+      console.error('Error fetching comments list', error);
+      return res.status(500),json({error:'Error fetching comments'});
+    }
+});
+
+app.get('/api/posts/:postid/comments', verifyToken, async (req, res) => {
+  const postId = parseInt(req.params.postid);
+  try {
+    const comments = await database.getAllCommentsOfPost(postId);
+    res.json({comments});
+  } catch (error) {
+    console.error('Error fetching comments list');
+    return res.status(500).json({error:'Error fetching comments'});
+  }
+});
+
+
+
+app.post('/api/comments', verifyToken, validateComment, async (req, res) => {
   const postId = parseInt(req.params.postid);
   const userId = req.token.id;
   try {
@@ -117,8 +156,29 @@ app.post('/api/posts/:postid/comments', verifyToken, async (req, res) => {
   }
 });
 
+app.patch('/api/comments/:commentid', verifyToken, verifyAdmin, validateUpdateComment, async (req, res) => {
+  const commentId = parseInt(req.params.commentid);
+  try {
+    const updatedComment = await database.updateComment(commentId, req.body.text);
+    res.json({ message: 'Comment update successfully', comment:updatedComment});
+  } catch (error) {
+    console.error('Error updating comment',error);
+    return res.status(500).json({error:'Error updating comment'});
+  }
+})
 
-app.post('/login', (req, res, next) => {
+app.delete('/api/comments/:commentid', verifyToken, verifyAdmin, async (req, res) => {
+  const commentId = parseInt(req.params.commentid);
+  try {
+    const comment = await database.deleteCommentById(commentId);
+    res.json({message: 'Comment deleted successfully', comment});
+  } catch (error) {
+    console.error('Error deleting comment', error);
+    return res.status(500).json({error:'Error deleting comment'});
+  }
+});
+
+app.post('/login', validateLogin, (req, res, next) => {
   passport.authenticate('local', { session: false }, (err, user, info) => {
     if (err) {
       return next(err);
@@ -135,11 +195,7 @@ app.post('/login', (req, res, next) => {
   })(req,res,next);
 });
 
-app.get('/register', (req, res) => {
-  res.render('index');
-});
-
-app.post('/register', async (req, res) => {
+app.post('/register', validateRegistration, async (req, res) => { 
   try {
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
     await database.createUser(req.body, hashedPassword);
@@ -180,6 +236,56 @@ function verifyAdmin(req, res, next) {
     next();
 }
 
+// Validation middlewares
+
+const validateRegistration = (req, res, next) => {
+  const { error } = registrationSchema.validate(req.body);
+  if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+  }
+  next();
+};
+
+const validateLogin = (req, res, next) => {
+  const { error } = loginSchema.validate(req.body);
+  if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+  }
+  next();
+};
+
+const validatePost = (req, res, next) => {
+  const { error } = postSchema.validate(req.body);
+  if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+  }
+  next();
+};
+
+const validateUpdatePost = (req, res, next) => {
+  const { error } = updatePostSchema.validate(req.body);
+  if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+  }
+  next();
+};
+
+const validateComment = (req, res, next) => {
+  const { error } = commentSchema.validate(req.body);
+  if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+  }
+  next();
+};
+
+const validateUpdateComment = (req, res, next) => {
+  const { error } = updateCommentSchema.validate(req.body);
+  if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+  }
+  next();
+};
+
 // Utility function 
 
 function parseEditPostBody(formBody) {
@@ -198,5 +304,39 @@ function parseEditPostBody(formBody) {
 
     return updateData;
 }
+
+// Joi validation schemas for post and patch routes
+
+const registrationSchema = Joi.object({
+  username: Joi.string().min(3).max(30).required(),
+  password: Joi.string().min(6).required(),
+  eMail: Joi.string().email().required()
+});
+
+const loginSchema = Joi.object({
+  username: Joi.string().min(3).max(30).required(),
+  password: Joi.string().min(6).required()
+});
+
+const postSchema = Joi.object({
+  title: Joi.string().min(3).max(100).required(),
+  text: Joi.string().min(3).required(),
+  isPublished: Joi.boolean().optional()
+});
+
+const updatePostSchema = Joi.object({
+  title: Joi.string().min(3).max(100).optional(),
+  text: Joi.string().min(3).optional(),
+  isPublished: Joi.boolean().optional()
+});
+
+const commentSchema = Joi.object({
+  text: Joi.string().min(1).max(2500).required(),
+  parentId: Joi.number().integer().required()
+});
+
+const updateCommentSchema = Joi.object({
+  text: Joi.string().min(1).max(2500).required()
+});
 
 app.listen(3000, () => console.log('Server listening on port 3000'));
