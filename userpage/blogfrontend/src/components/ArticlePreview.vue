@@ -1,5 +1,11 @@
 <script setup>
 defineProps({
+
+  id: {
+    type: Number,
+    required:true
+  },
+
   title: {
     type: String,
     required: true
@@ -21,7 +27,7 @@ defineProps({
 
 <template>
  <div>
-                <div class="mt-8">
+                <div class="mt-2">
                     <span class="text-sky-500 uppercase tracking-wider">Article</span>
 
                     <h1 class="mt-4 text-xl font-semibold text-gray-800  truncate">
@@ -41,7 +47,7 @@ defineProps({
                             <p class="text-sm text-gray-500 dark:text-gray-400">{{createdAt.toString().substring(0,24)}}</p>
                         </div>
 
-                        <a href="#" class="inline-block text-sky-500 underline hover:text-sky-400">Read more</a>
+                        <RouterLink :to="`/posts/${id}`" class="inline-block text-sky-500 underline hover:text-sky-400">Read more</RouterLink>
                     </div>
 
                 </div>
