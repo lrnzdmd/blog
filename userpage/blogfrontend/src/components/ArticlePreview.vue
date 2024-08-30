@@ -44,7 +44,7 @@ defineProps({
                                 {{author}}
                             </a>
 
-                            <p class="text-sm text-gray-500 dark:text-gray-400">{{createdAt.toString().substring(0,24)}}</p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">{{createdAt}}</p>
                         </div>
 
                         <RouterLink :to="`/posts/${id}`" class="inline-block text-sky-500 underline hover:text-sky-400">Read more</RouterLink>

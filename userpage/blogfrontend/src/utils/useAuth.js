@@ -12,6 +12,7 @@ const isLoggedIn = ref(localStorage.getItem('jwtToken') ? true : false);
         localStorage.removeItem('jwtToken');
         isLoggedIn.value = false;
     }
+    
 
     export {
         isLoggedIn,

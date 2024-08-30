@@ -14,7 +14,7 @@ const routes = [
     {path: '/', component: HomePage},
     {path: '/login', component: LoginPage},
     {path: '/register', component: RegisterPage},
-    {path: '/posts/:postid', component: PostPage}
+    {path: '/posts/:postid', component: PostPage, props: route => ({ postId: Number(route.params.postid) })}
 ];
 
 const router = createRouter({
