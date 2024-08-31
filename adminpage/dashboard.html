@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    <script defer>
+        async function handleNewPost(event) {
+            event.preventDefault();
+            const title = document.getElementById('title').value;
+            const text = document.getElementById('text').value;
+            try {
+                const response = await axios.post(`https://deliberate-collie-birdiepoop-197e5571.koyeb.app/api/posts`, {
+                    title: title,
+                    text: text,
+                }, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken')}` },
+                });
+                window.location.href = './dashboard.html';
+            } catch (error) {
+
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!localStorage.getItem('jwtToken')) {
+                window.location.href = './index.html';
+                return;
+            }
+
+            async function loadPosts() {
+                try {
+                    const response = await axios.get('https://deliberate-collie-birdiepoop-197e5571.koyeb.app/api/posts/all', {
+                        headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken')}` },
+                    });
+                    return response.data.posts;
+                } catch (error) {
+                    console.error('Error loading posts:', error);
+                    return [];
+                }
+            }
+
+
+            new Vue({
+                el: '#app',
+                data: {
+                    posts: [],
+                    editingId: null,
+                    editingPost: { title: '', text: '' },
+                    loading: true,
+                },
+
+                async created() {
+                    this.posts = await loadPosts();
+                    this.loading = false;
+                },
+                methods: {
+                    async handlePublish(event, postId) {
+                        try {
+                            const response = await axios.patch(`https://deliberate-collie-birdiepoop-197e5571.koyeb.app/api/posts/${postId}/publish`,{}, {
+                                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken')}` },
+                            });
+                            window.location.href = './dashboard.html'
+                        } catch (error) {
+                            console.error(error);
+                        }
+                    },
+                    async handleDelete(event, postId) {
+                        try {
+                            const response = await axios.delete(`https://deliberate-collie-birdiepoop-197e5571.koyeb.app/api/posts/${postId}`, {
+                                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken')}` },
+                            });
+                            window.location.href = './dashboard.html';
+                        }
+                        catch (error) {
+                            console.error(error);
+                        }
+                    },
+                    async finishEditingPost(event, postId) {
+                        try {
+                            const response = await axios.patch(`https://deliberate-collie-birdiepoop-197e5571.koyeb.app/api/posts/${postId}`, {
+                                title: this.editingPost.title,
+                                text: this.editingPost.text,
+                            }, {
+                                headers: { Authorization: `Bearer ${localStorage.getItem('jwtToken')}` },
+                            });
+                            window.location.href = './dashboard.html'
+                        }
+                        catch (error) {
+                            console.error(error);
+                        }
+                    },
+                    handleEdit(event, postId) {
+                        this.editingId = postId
+                    }
+                },
+                template: `
+                    <div class="container mx-auto p-6">
+                        <h1 class="text-3xl font-semibold mb-6 text-gray-800">Posts</h1>
+                        <div v-if="loading" class="text-center text-gray-500">Loading...</div>
+                            <ul v-else class="space-y-4">
+                                <li v-for="post in posts" :key="post.id" class="p-4 bg-white border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                                    <div class="flex justify-between items-center mb-3">
+                                        <p class="text-gray-700 font-medium">ID: {{post.id}}</p>
+                                        <p v-if="post.isPublished" class="text-emerald-500 font-medium">PUBLISHED</p>
+                                        <p v-else class="text-red-500 font-medium">UNPUBLISHED</p>
+                                        <p class="text-gray-600">Title: {{post.title}}</p>
+                                    </div>
+                                    <div class="flex justify-between gap-2">
+                                    <button @click="handleEdit($event, post.id)" class="px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-400 focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-50">Edit</button>
+                                    <button @click="handlePublish($event, post.id)" class="px-4 py-2 text-white bg-emerald-500 rounded-lg hover:bg-emerald-400 focus:outline-none focus:ring focus:ring-red-300 focus:ring-opacity-50">Publish</button>
+                                    <button @click="handleDelete($event, post.id)" class="px-4 py-2 text-white bg-red-500 rounded-lg hover:bg-red-400 focus:outline-none focus:ring focus:ring-red-300 focus:ring-opacity-50">Delete</button>
+                                    </div>
+                                    <div v-if="post.id === editingId" class="container mx-auto p-6">
+        <h1 class="text-3xl font-semibold mb-6 text-gray-800">Edit Post</h1>
+        <form @submit.prevent="finishEditingPost(event, post.id)" class="bg-white p-6 border border-gray-200 rounded-lg shadow-md">
+            <div class="mb-4">
+                <label for="title" class="block text-gray-700 text-sm font-medium mb-2">Title</label>
+                <input required type="text" name="title" v-model="editingPost.title"
+                    class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+                    :placeholder="post.title">
+            </div>
+            <div class="mb-4">
+                <label for="text" class="block text-gray-700 text-sm font-medium mb-2">Content</label>
+                <textarea required name="text" v-model="editingPost.text" rows="6"
+                    class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+                    :placeholder="post.text"></textarea>
+            </div>
+            <button  type="submit"
+                class="w-full px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-400 focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-50">Edit</button>
+        </form>
+    </div>
+                                </li>
+                            </ul>
+                    </div>
+                `,
+            });
+        });
+
+    </script>
+    <title>Dashboard</title>
+</head>
+
+<body>
+    <div class="container mx-auto p-6">
+        <h1 class="text-3xl font-semibold mb-6 text-gray-800">New Post</h1>
+        <form class="bg-white p-6 border border-gray-200 rounded-lg shadow-md">
+            <div class="mb-4">
+                <label for="title" class="block text-gray-700 text-sm font-medium mb-2">Title</label>
+                <input required type="text" name="title" id="title"
+                    class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+                    placeholder="Enter the title">
+            </div>
+            <div class="mb-4">
+                <label for="text" class="block text-gray-700 text-sm font-medium mb-2">Content</label>
+                <textarea required name="text" id="text" rows="6"
+                    class="block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+                    placeholder="Enter the content"></textarea>
+            </div>
+            <button onclick="handleNewPost(event)" type="submit"
+                class="w-full px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-400 focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-50">Submit</button>
+        </form>
+    </div>
+    <div id="app"></div>
+</body>
+
+</html>

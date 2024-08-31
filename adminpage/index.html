@@ -4,33 +4,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script defer>
         
 
         async function handleSubmit(event) {
             event.preventDefault();
             const userField = document.getElementById('username');
-        const pwdField = document.getElementById('password');
+            const pwdField = document.getElementById('password');
             const formData = {
-                username:userField.value,
-                password:pwdField.value,
+                username: userField.value,
+                password: pwdField.value,
             };
-        
+
             try {
-                const response = await fetch('https://deliberate-collie-birdiepoop-197e5571.koyeb.app/api/admin/login', {
-                    method: 'POST',
+        
+                const response = await axios.post('https://deliberate-collie-birdiepoop-197e5571.koyeb.app/api/admin/login', formData, {
                     headers: {
-                'Content-Type': 'application/json'
-            },
-                    body: JSON.stringify(formData),
-                })
-                const responseData = await response.json();
-                localStorage.setItem('jwtToken', responseData.token);
-                window.location.href = '/dashboard.html';
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                localStorage.setItem('jwtToken', response.data.token);
+                window.location.href = './dashboard.html';
             } catch (error) {
                 console.error('Error with the request', error);
             }
-
         }
     </script>
     <title>Document</title>
